@@ -21,7 +21,6 @@ export default function App() {
         <Button onClick={() => setIsAddOpen(true)}>+ New Task</Button>
       </div>
 
-      {/* List of Tasks */}
       <div className="space-y-3">
         {data.map((todo: any) => (
           <div key={todo.id} className="border p-3 rounded flex flex-col gap-2">
@@ -37,7 +36,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Images */}
+      
             <div className="flex gap-2">
               {todo.images?.map((img: any) => (
                 <div key={img.id} className="relative">
@@ -51,7 +50,7 @@ export default function App() {
         ))}
       </div>
 
-      {/* Modal: ADD */}
+      
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
@@ -72,7 +71,6 @@ export default function App() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal: EDIT */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
