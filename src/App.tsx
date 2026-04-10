@@ -1,111 +1,86 @@
-import { useState } from 'react';
-import { Formik, Form, Field } from 'formik';
-import * as Yup from 'yup';
-import { useTodoStore } from '@/store/todoStore';import { Button } from './Components/ui/button';
-import { Input } from './Components/ui/input';
-import { Card, CardContent } from './Components/ui/card';
-import { Trash2, Edit3, Check, X, CheckCircle } from 'lucide-react';
-
-const Schema = Yup.object().shape({
-  task: Yup.string().min(2, 'Кӯтоҳ!').required('Ҳатмист')
-});
-
-// Ислоҳи типизатсия барои TodoItem
-interface TodoProps {
-  todo: {
-    id: number;
-    text: string;
-    completed: boolean;
-  };
-}
-
-const TodoItem = ({ todo }: TodoProps) => {
-  const { deleteTodo, toggleTodo, updateTodo } = useTodoStore();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.text);
-
-  const save = () => {
-    if (editText.trim()) { 
-      updateTodo(todo.id, editText); 
-      setIsEditing(false); 
-    }
-  };
-
-  return (
-    <Card className={`mb-2 ${todo.completed ? 'opacity-60 bg-slate-50' : ''}`}>
-      <CardContent className="flex items-center justify-between p-3">
-        {isEditing ? (
-          <div className="flex w-full gap-2">
-            <Input value={editText} onChange={(e) => setEditText(e.target.value)} />
-            <Button size="icon" onClick={save} className="bg-green-600">
-              <Check className="w-4 h-4" />
-            </Button>
-            <Button size="icon" variant="destructive" onClick={() => setIsEditing(false)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleTodo(todo.id)}>
-              <CheckCircle className={`w-5 h-5 ${todo.completed ? 'text-green-500' : 'text-slate-300'}`} />
-              <span className={todo.completed ? 'line-through text-slate-500' : ''}>{todo.text}</span>
-            </div>
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setIsEditing(true)}>
-                <Edit3 className="w-4 h-4 text-blue-500" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => deleteTodo(todo.id)}>
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-interface TodoState {
-  todos: { id: number; text: string; completed: boolean }[];
-  addTodo: (text: string) => void;
-}
+import { useEffect, useState } from "react";
+import { useCount } from "./store/counter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function App() {
-  // Гирифтани маълумот бо диққат
-  const todos = useTodoStore((state: TodoState) => state.todos);
-  const addTodo = useTodoStore((state: TodoState) => state.addTodo);
+  const { data, getData, addData, deleteData, toggleComplete, deleteImage, addImage, updateTodo } = useCount((s: any) => s);
+  
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [current, setCurrent] = useState<any>(null);
+
+  useEffect(() => { getData() }, []);
 
   return (
-    <div className="max-w-md mx-auto p-6 mt-10 bg-white shadow-2xl rounded-2xl border">
-      <h1 className="text-2xl font-bold text-center mb-6 text-slate-800">Todo Zustand</h1>
-      
-      <Formik 
-        initialValues={{ task: '' }} 
-        validationSchema={Schema} 
-        onSubmit={(v, { resetForm }) => { 
-          addTodo(v.task); 
-          resetForm(); 
-        }}
-      >
-        {({ errors, touched }) => (
-          <Form className="mb-6">
-            <div className="flex gap-2">
-              <Field as={Input} name="task" placeholder="Вазифа..." />
-              <Button type="submit">Илова</Button>
-            </div>
-            {errors.task && touched.task && <p className="text-red-500 text-xs mt-1">{errors.task}</p>}
-          </Form>
-        )}
-      </Formik>
-
-      <div className="space-y-1">
-        {/* Илова кардани тафтиши массив пеш аз .map */}
-        {todos && todos.length > 0 ? (
-          todos.map((t: { id: number; text: string; completed: boolean }) => <TodoItem key={t.id} todo={t} />)
-        ) : (
-          <p className="text-center text-slate-400 text-sm mt-4">Рӯйхат холӣ аст</p>
-        )}
+    <div className="p-5 max-w-2xl mx-auto">
+      <div className="flex justify-between mb-5">
+        <h1 className="text-xl font-bold">ToDo List</h1>
+        <Button onClick={() => setIsAddOpen(true)}>+ New Task</Button>
       </div>
+
+      <div className="space-y-3">
+        {data.map((todo: any) => (
+          <div key={todo.id} className="border p-3 rounded flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox checked={todo.completed} onCheckedChange={() => toggleComplete(todo.id)} />
+                <span className={todo.completed ? "line-through text-gray-400" : ""}>{todo.name}</span>
+                <span className="text-xs border px-1">{todo.completed ? "Inactive" : "Active"}</span>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" onClick={() => { setCurrent(todo); setIsEditOpen(true); }}>Edit</Button>
+                <Button variant="destructive" size="sm" onClick={() => deleteData(todo.id)}>Delete</Button>
+              </div>
+            </div>
+
+      
+            <div className="flex gap-2">
+              {todo.images?.map((img: any) => (
+                <div key={img.id} className="relative">
+                  <img src={`http://37.27.29.18:8001/images/${img.imageName}`} className="w-12 h-12 object-cover" />
+                  <button onClick={() => deleteImage(img.id)} className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1">X</button>
+                </div>
+              ))}
+              <input type="file" className="w-20 text-[10px]" onChange={(e) => e.target.files?.[0] && addImage(todo.id, e.target.files[0])} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
+          <form onSubmit={(e: any) => {
+            e.preventDefault();
+            const fd = new FormData();
+            fd.append("Name", e.target.name.value);
+            fd.append("Description", e.target.desc.value);
+            if(e.target.img.files[0]) fd.append("Images", e.target.img.files[0]);
+            addData(fd);
+            setIsAddOpen(false);
+          }} className="space-y-3">
+            <Input name="name" placeholder="Name" required />
+            <Input name="desc" placeholder="Description" />
+            <Input name="img" type="file" />
+            <Button type="submit">Save</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input value={current?.name || ""} onChange={(e) => setCurrent({...current, name: e.target.value})} />
+            <Input value={current?.description || ""} onChange={(e) => setCurrent({...current, description: e.target.value})} />
+            <Button onClick={() => { updateTodo(current.id, {name: current.name, description: current.description}); setIsEditOpen(false); }}>Update</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
