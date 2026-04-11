@@ -1,86 +1,93 @@
-import { useEffect, useState } from "react";
-import { useCount } from "./store/counter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getTodos, addTodo, deleteTodo, updateTodo } from './counter/todo';
+import { Pencil, Trash2, Plus, X } from 'lucide-react';
 
-export default function App() {
-  const { data, getData, addData, deleteData, toggleComplete, deleteImage, addImage, updateTodo } = useCount((s: any) => s);
-  
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [current, setCurrent] = useState<any>(null);
+const App = () => {
+    const dispatch = useDispatch<any>();
+    const data = useSelector((state: any) => state.todo.data);
 
-  useEffect(() => { getData() }, []);
+    const [isOpen, setIsOpen] = useState(false);
+    const [currentTodo, setCurrentTodo] = useState<any>(null);
+    const [text, setText] = useState("");
 
-  return (
-    <div className="p-5 max-w-2xl mx-auto">
-      <div className="flex justify-between mb-5">
-        <h1 className="text-xl font-bold">ToDo List</h1>
-        <Button onClick={() => setIsAddOpen(true)}>+ New Task</Button>
-      </div>
+    useEffect(() => { dispatch(getTodos()); }, [dispatch]);
 
-      <div className="space-y-3">
-        {data.map((todo: any) => (
-          <div key={todo.id} className="border p-3 rounded flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox checked={todo.completed} onCheckedChange={() => toggleComplete(todo.id)} />
-                <span className={todo.completed ? "line-through text-gray-400" : ""}>{todo.name}</span>
-                <span className="text-xs border px-1">{todo.completed ? "Inactive" : "Active"}</span>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" onClick={() => { setCurrent(todo); setIsEditOpen(true); }}>Edit</Button>
-                <Button variant="destructive" size="sm" onClick={() => deleteData(todo.id)}>Delete</Button>
-              </div>
-            </div>
+    const handleSave = () => {
+        if (!text.trim()) return;
+        if (currentTodo) {
+            dispatch(updateTodo({ ...currentTodo, name: text }));
+        } else {
+            dispatch(addTodo(text));
+        }
+        setIsOpen(false);
+        setText("");
+    };
 
-      
-            <div className="flex gap-2">
-              {todo.images?.map((img: any) => (
-                <div key={img.id} className="relative">
-                  <img src={`http://37.27.29.18:8001/images/${img.imageName}`} className="w-12 h-12 object-cover" />
-                  <button onClick={() => deleteImage(img.id)} className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1">X</button>
+    return (
+        <div className="min-h-screen bg-slate-100 p-8 flex justify-center">
+            <div className="w-full max-w-md bg-white shadow-xl rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold text-slate-800">Todo Pro</h1>
+                    <button 
+                        onClick={() => { setCurrentTodo(null); setText(""); setIsOpen(true); }}
+                        className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition"
+                    >
+                        <Plus size={20} />
+                    </button>
                 </div>
-              ))}
-              <input type="file" className="w-20 text-[10px]" onChange={(e) => e.target.files?.[0] && addImage(todo.id, e.target.files[0])} />
+
+                <div className="space-y-3">
+                    {data.map((todo: any) => (
+                        <div key={todo.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 group transition-all hover:shadow-md">
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="checkbox" 
+                                    checked={todo.status} 
+                                    onChange={() => dispatch(updateTodo({ ...todo, status: !todo.status }))}
+                                    className="w-5 h-5 accent-indigo-600 cursor-pointer"
+                                />
+                                <span className={`text-sm font-semibold ${todo.status ? "line-through text-slate-400" : "text-slate-700"}`}>
+                                    {todo.name || todo.Name}
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => { setCurrentTodo(todo); setText(todo.name || todo.Name); setIsOpen(true); }} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                                    <Pencil size={18} />
+                                </button>
+                                <button onClick={() => dispatch(deleteTodo(todo.id))} className="text-slate-400 hover:text-red-500 transition-colors">
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
-          </div>
-        ))}
-      </div>
 
-      
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
-          <form onSubmit={(e: any) => {
-            e.preventDefault();
-            const fd = new FormData();
-            fd.append("Name", e.target.name.value);
-            fd.append("Description", e.target.desc.value);
-            if(e.target.img.files[0]) fd.append("Images", e.target.img.files[0]);
-            addData(fd);
-            setIsAddOpen(false);
-          }} className="space-y-3">
-            <Input name="name" placeholder="Name" required />
-            <Input name="desc" placeholder="Description" />
-            <Input name="img" type="file" />
-            <Button type="submit">Save</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+            {/* MODAL */}
+            {isOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-4 text-slate-800 font-bold">
+                            <h2>{currentTodo ? "Edit Task" : "New Task"}</h2>
+                            <button onClick={() => setIsOpen(false)}><X size={20} /></button>
+                        </div>
+                        <input 
+                            className="w-full border-2 border-slate-200 rounded-xl p-3 mb-4 outline-none focus:border-indigo-600 transition-all"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="Type something..."
+                            autoFocus
+                        />
+                        <div className="flex gap-3">
+                            <button onClick={() => setIsOpen(false)} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">Cancel</button>
+                            <button onClick={handleSave} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Input value={current?.name || ""} onChange={(e) => setCurrent({...current, name: e.target.value})} />
-            <Input value={current?.description || ""} onChange={(e) => setCurrent({...current, description: e.target.value})} />
-            <Button onClick={() => { updateTodo(current.id, {name: current.name, description: current.description}); setIsEditOpen(false); }}>Update</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+export default App;
