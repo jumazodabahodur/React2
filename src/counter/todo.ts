@@ -1,47 +1,37 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice } from '@reduxjs/toolkit';
 
-const API_URL = "http://37.27.29.18:8001/api/to-dos";
-
-export const getTodos = createAsyncThunk("getTodos", async () => {
-    const res = await axios.get(API_URL);
-    return Array.isArray(res.data) ? res.data : res.data.data || [];
-});
-
-export const addTodo = createAsyncThunk("addTodo", async (text: string, { dispatch }) => {
-    // ДИҚҚАТ: Ҳарфҳоро МАҲЗ бо ҳарфи КАЛОН навиштам, чунки сервер ҳаминро талаб кард
-    await axios.post(API_URL, { 
-        Name: text, 
-        Images: "string", 
-        Description: "string" 
-    });
-    dispatch(getTodos()); 
-});
-
-export const deleteTodo = createAsyncThunk("deleteTodo", async (id: number, { dispatch }) => {
-    await axios.delete(`${API_URL}?id=${id}`);
-    dispatch(getTodos());
-});
-
-export const updateTodo = createAsyncThunk("updateTodo", async (todo: any, { dispatch }) => {
-    await axios.put(`${API_URL}?id=${todo.id}`, {
-        id: todo.id,
-        Name: todo.name || todo.Name, // Ҳам хурд ҳам калонро месанҷем
-        Images: "string",
-        Description: "string"
-    });
-    dispatch(getTodos());
-});
+interface Todo {
+    id: number;
+    name: string;
+    status: boolean;
+    img: string;
+}
 
 const todoSlice = createSlice({
     name: 'todo',
-    initialState: { data: [] as any[] },
-    reducers: {},
-    extraReducers: (builder) => {
-        builder.addCase(getTodos.fulfilled, (state, { payload }) => {
-            state.data = payload;
-        });
+    initialState: { data: [{ id: 0, name: 'ewrew', status: true, img: 'ewrew' }] as Todo[] },
+    reducers: {
+        addTodo: (state, action) => {
+            state.data.push({
+                id: Date.now(),
+                name: action.payload.name,
+                img: action.payload.img,
+                status: false
+            });
+        },
+        deleteTodo: (state, action) => {
+            state.data = state.data.filter(t => t.id !== action.payload);
+        },
+        toggleStatus: (state, action) => {
+            const todo = state.data.find(t => t.id === action.payload);
+            if (todo) todo.status = !todo.status;
+        },
+        updateTodo: (state, action) => {
+            const index = state.data.findIndex(t => t.id === action.payload.id);
+            if (index !== -1) state.data[index] = action.payload;
+        }
     }
 });
 
+export const { addTodo, deleteTodo, toggleStatus, updateTodo } = todoSlice.actions;
 export default todoSlice.reducer;
