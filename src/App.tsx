@@ -1,86 +1,95 @@
-import { useEffect, useState } from "react";
-import { useCount } from "./store/counter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { addTodo, deleteTodo, toggleStatus, updateTodo } from './counter/todo';
 
-export default function App() {
-  const { data, getData, addData, deleteData, toggleComplete, deleteImage, addImage, updateTodo } = useCount((s: any) => s);
-  
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [current, setCurrent] = useState<any>(null);
+const App = () => {
+    const dispatch = useDispatch();
+    const data = useSelector((state: any) => state.todo.data);
 
-  useEffect(() => { getData() }, []);
+    const [isOpen, setIsOpen] = useState(false);
+    const [currentTodo, setCurrentTodo] = useState<any>(null);
+    const [text, setText] = useState("");
+    const [previewImg, setPreviewImg] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  return (
-    <div className="p-5 max-w-2xl mx-auto">
-      <div className="flex justify-between mb-5">
-        <h1 className="text-xl font-bold">ToDo List</h1>
-        <Button onClick={() => setIsAddOpen(true)}>+ New Task</Button>
-      </div>
+    const handleFileChange = (e: any) => {
+        const reader = new FileReader();
+        reader.onloadend = () => setPreviewImg(reader.result as string);
+        reader.readAsDataURL(e.target.files[0]);
+    };
 
-      <div className="space-y-3">
-        {data.map((todo: any) => (
-          <div key={todo.id} className="border p-3 rounded flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox checked={todo.completed} onCheckedChange={() => toggleComplete(todo.id)} />
-                <span className={todo.completed ? "line-through text-gray-400" : ""}>{todo.name}</span>
-                <span className="text-xs border px-1">{todo.completed ? "Inactive" : "Active"}</span>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" onClick={() => { setCurrent(todo); setIsEditOpen(true); }}>Edit</Button>
-                <Button variant="destructive" size="sm" onClick={() => deleteData(todo.id)}>Delete</Button>
-              </div>
+    const handleSave = () => {
+        const payload = { ...currentTodo, name: text, img: previewImg || "https://via.placeholder.com/100" };
+        closeModal();
+    };
+
+    const closeModal = () => {
+        setIsOpen(false);
+        setText("");
+        setPreviewImg("");
+        setCurrentTodo(null);
+    };
+
+    return (
+        <div className="p-8 max-w-2xl mx-auto font-sans">
+            <div className="flex justify-between items-center mb-6 border-b-2 pb-4 border-black">
+                <h1 className="text-2xl font-black uppercase">Todo App</h1>
+                <button onClick={() => setIsOpen(true)} className="bg-black text-white px-4 py-1 font-bold text-xs">ADD TASK</button>
             </div>
 
-      
-            <div className="flex gap-2">
-              {todo.images?.map((img: any) => (
-                <div key={img.id} className="relative">
-                  <img src={`http://37.27.29.18:8001/images/${img.imageName}`} className="w-12 h-12 object-cover" />
-                  <button onClick={() => deleteImage(img.id)} className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1">X</button>
+            <table className="w-full">
+                <tbody>
+                    {data.map((todo: any) => (
+                        <tr key={todo.id} className="border-b border-gray-100">
+                            <td className="py-4 w-10">
+                                {/* ИНВЕРСИЯ: Галочка стоит (!todo.status), когда задача НЕ выполнена (Active) */}
+                                <input 
+                                    type="checkbox" 
+                                    checked={!todo.status} 
+                                    onChange={() => dispatch(toggleStatus(todo.id))}
+                                    className="w-5 h-5 cursor-pointer accent-black"
+                                />
+                            </td>
+                            <td className="py-4 w-12">
+                                <img src={todo.img} className="w-10 h-10 object-cover border" />
+                            </td>
+                            <td className="py-4 px-4">
+                                <p className={`font-bold uppercase text-sm ${todo.status ? "text-gray-400 line-through" : "text-black"}`}>
+                                    {todo.name}
+                                </p>
+                                <span className={`text-[10px] font-black uppercase ${!todo.status ? "text-green-600" : "text-gray-400"}`}>
+                                    {!todo.status ? "Active" : "Inactive"}
+                                </span>
+                            </td>
+                            <td className="py-4 text-right">
+                                <button onClick={() => { setCurrentTodo(todo); setText(todo.name); setPreviewImg(todo.img); setIsOpen(true); }} className="text-[10px] font-bold rounded-2xl border border-green-700 p-[10px] uppercase text-green-500 uppercase mr-4">Edit</button>
+                                <button onClick={() => dispatch(deleteTodo(todo.id))} className="text-[10px] font-bold rounded-2xl border border-red-700 p-[10px] uppercase text-red-500">Delete</button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* Modal */}
+            {isOpen && (
+                <div className="fixed inset-0 bg-black/20 flex items-center justify-center p-4">
+                    <div className="bg-white p-6 w-full max-w-xs border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 bg-gray-50 mb-4 flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200">
+                            {previewImg ? <img src={previewImg} className="w-full h-full object-cover" /> : <b className="text-[10px] text-gray-400">SELECT PHOTO</b>}
+                        </div>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+
+                        <input className="w-full border-2 border-black p-2 mb-4 font-bold text-sm" value={text} onChange={(e) => setText(e.target.value)} placeholder="TASK NAME" />
+
+                        <div className="flex gap-2 text-[10px] font-black">
+                            <button onClick={closeModal} className="flex-1 py-2 border-2 border-black">CANCEL</button>
+                            <button onClick={handleSave} className="flex-1 py-2 bg-black text-white">SAVE</button>
+                        </div>
+                    </div>
                 </div>
-              ))}
-              <input type="file" className="w-20 text-[10px]" onChange={(e) => e.target.files?.[0] && addImage(todo.id, e.target.files[0])} />
-            </div>
-          </div>
-        ))}
-      </div>
+            )}
+        </div>
+    );
+};
 
-      
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
-          <form onSubmit={(e: any) => {
-            e.preventDefault();
-            const fd = new FormData();
-            fd.append("Name", e.target.name.value);
-            fd.append("Description", e.target.desc.value);
-            if(e.target.img.files[0]) fd.append("Images", e.target.img.files[0]);
-            addData(fd);
-            setIsAddOpen(false);
-          }} className="space-y-3">
-            <Input name="name" placeholder="Name" required />
-            <Input name="desc" placeholder="Description" />
-            <Input name="img" type="file" />
-            <Button type="submit">Save</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <Input value={current?.name || ""} onChange={(e) => setCurrent({...current, name: e.target.value})} />
-            <Input value={current?.description || ""} onChange={(e) => setCurrent({...current, description: e.target.value})} />
-            <Button onClick={() => { updateTodo(current.id, {name: current.name, description: current.description}); setIsEditOpen(false); }}>Update</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+export default App;
