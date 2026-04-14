@@ -1,90 +1,111 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTodo, deleteTodo, toggleStatus, updateTodo } from './counter/todo';
+import { getTodos, addTodo, deleteTodo, updateTodo, deleteAllTodos } from './counter/todo';
+import { Pencil, Trash2, Plus, X, CheckCircle2, Circle, LayoutGrid, Trash } from 'lucide-react';
 
 const App = () => {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<any>();
     const data = useSelector((state: any) => state.todo.data);
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentTodo, setCurrentTodo] = useState<any>(null);
     const [text, setText] = useState("");
-    const [previewImg, setPreviewImg] = useState("");
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileChange = (e: any) => {
-        const reader = new FileReader();
-        reader.onloadend = () => setPreviewImg(reader.result as string);
-        reader.readAsDataURL(e.target.files[0]);
-    };
+    useEffect(() => { dispatch(getTodos()); }, [dispatch]);
 
     const handleSave = () => {
-        const payload = { ...currentTodo, name: text, img: previewImg || "https://via.placeholder.com/100" };
-        closeModal();
-    };
-
-    const closeModal = () => {
+        if (!text.trim()) return;
+        if (currentTodo) {
+            dispatch(updateTodo({ ...currentTodo, Name: text })); 
+        } else {
+            dispatch(addTodo(text));
+        }
         setIsOpen(false);
         setText("");
-        setPreviewImg("");
-        setCurrentTodo(null);
     };
 
     return (
-        <div className="p-8 max-w-2xl mx-auto font-sans">
-            <div className="flex justify-between items-center mb-6 border-b-2 pb-4 border-black">
-                <h1 className="text-2xl font-black uppercase">Todo App</h1>
-                <button onClick={() => setIsOpen(true)} className="bg-black text-white px-4 py-1 font-bold text-xs">ADD TASK</button>
-            </div>
+        <div className="min-h-screen bg-[#F0F2F5] p-4 sm:p-10 flex justify-center items-start font-sans antialiased text-slate-900">
+            <div className="w-full max-w-lg">
+                {/* Header */}
+                <div className="bg-white rounded-[32px] p-8 mb-6 shadow-sm border border-slate-200/60 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight flex items-center gap-2 text-indigo-600">
+                            <LayoutGrid size={28} /> HUB<span className="text-slate-900">LIST</span>
+                        </h1>
+                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
+                            {data.length} Tasks Remaining
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        {/* ТУГМАИ DELETE ALL */}
+                        {data.length > 0 && (
+                            <button 
+                                onClick={() => { if(window.confirm("Ҳамаро нест кунам?")) dispatch(deleteAllTodos(data)) }}
+                                className="bg-rose-50 text-rose-600 p-3 rounded-2xl hover:bg-rose-100 transition-all shadow-sm"
+                                title="Delete All"
+                            >
+                                <Trash size={22} />
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => { setCurrentTodo(null); setText(""); setIsOpen(true); }}
+                            className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                        >
+                            <Plus size={24} strokeWidth={3} />
+                        </button>
+                    </div>
+                </div>
 
-            <table className="w-full">
-                <tbody>
+                {/* List */}
+                <div className="space-y-4">
                     {data.map((todo: any) => (
-                        <tr key={todo.id} className="border-b border-gray-100">
-                            <td className="py-4 w-10">
-                                {/* ИНВЕРСИЯ: Галочка стоит (!todo.status), когда задача НЕ выполнена (Active) */}
-                                <input 
-                                    type="checkbox" 
-                                    checked={!todo.status} 
-                                    onChange={() => dispatch(toggleStatus(todo.id))}
-                                    className="w-5 h-5 cursor-pointer accent-black"
-                                />
-                            </td>
-                            <td className="py-4 w-12">
-                                <img src={todo.img} className="w-10 h-10 object-cover border" />
-                            </td>
-                            <td className="py-4 px-4">
-                                <p className={`font-bold uppercase text-sm ${todo.status ? "text-gray-400 line-through" : "text-black"}`}>
-                                    {todo.name}
-                                </p>
-                                <span className={`text-[10px] font-black uppercase ${!todo.status ? "text-green-600" : "text-gray-400"}`}>
-                                    {!todo.status ? "Active" : "Inactive"}
+                        <div key={todo.id} className="bg-white group rounded-[28px] p-5 flex items-center justify-between border border-transparent hover:border-indigo-100 transition-all duration-300">
+                            <div className="flex items-center gap-4 flex-1">
+                                <button onClick={() => dispatch(updateTodo({ ...todo, isCompleted: !todo.isCompleted }))}>
+                                    {todo.isCompleted ? (
+                                        <CheckCircle2 className="text-emerald-500" size={28} strokeWidth={2.5} />
+                                    ) : (
+                                        <Circle className="text-slate-200" size={28} strokeWidth={2.5} />
+                                    )}
+                                </button>
+                                <span className={`text-lg font-bold tracking-tight ${(todo.isCompleted) ? 'text-slate-300 line-through' : 'text-slate-700'}`}>
+                                    {todo.name || todo.Name}
                                 </span>
-                            </td>
-                            <td className="py-4 text-right">
-                                <button onClick={() => { setCurrentTodo(todo); setText(todo.name); setPreviewImg(todo.img); setIsOpen(true); }} className="text-[10px] font-bold rounded-2xl border border-green-700 p-[10px] uppercase text-green-500 uppercase mr-4">Edit</button>
-                                <button onClick={() => dispatch(deleteTodo(todo.id))} className="text-[10px] font-bold rounded-2xl border border-red-700 p-[10px] uppercase text-red-500">Delete</button>
-                            </td>
-                        </tr>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => { setCurrentTodo(todo); setText(todo.name || todo.Name); setIsOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600">
+                                    <Pencil size={18} strokeWidth={2.5} />
+                                </button>
+                                <button onClick={() => dispatch(deleteTodo(todo.id))} className="p-2 text-slate-300 hover:text-rose-600">
+                                    <Trash2 size={18} strokeWidth={2.5} />
+                                </button>
+                            </div>
+                        </div>
                     ))}
-                </tbody>
-            </table>
+                </div>
+            </div>
 
             {/* Modal */}
             {isOpen && (
-                <div className="fixed inset-0 bg-black/20 flex items-center justify-center p-4">
-                    <div className="bg-white p-6 w-full max-w-xs border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                        <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 bg-gray-50 mb-4 flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200">
-                            {previewImg ? <img src={previewImg} className="w-full h-full object-cover" /> : <b className="text-[10px] text-gray-400">SELECT PHOTO</b>}
-                        </div>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-
-                        <input className="w-full border-2 border-black p-2 mb-4 font-bold text-sm" value={text} onChange={(e) => setText(e.target.value)} placeholder="TASK NAME" />
-
-                        <div className="flex gap-2 text-[10px] font-black">
-                            <button onClick={closeModal} className="flex-1 py-2 border-2 border-black">CANCEL</button>
-                            <button onClick={handleSave} className="flex-1 py-2 bg-black text-white">SAVE</button>
-                        </div>
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+                    <div className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl animate-in zoom-in-95">
+                        <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter text-slate-900">
+                            {currentTodo ? "Edit Mission" : "New Mission"}
+                        </h2>
+                        <input 
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 mb-10 outline-none focus:border-indigo-600 font-bold text-xl"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="Enter task..."
+                            autoFocus
+                        />
+                        <button 
+                            onClick={handleSave} 
+                            className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:bg-indigo-700 transition-all"
+                        >
+                            CONFIRM DATA
+                        </button>
                     </div>
                 </div>
             )}
