@@ -1,116 +1,539 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { getTodos, addTodo, deleteTodo, updateTodo, deleteAllTodos } from './counter/todo';
-import { Pencil, Trash2, Plus, X, CheckCircle2, Circle, LayoutGrid, Trash } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+
+import {
+  CheckCheckIcon,
+  Delete,
+  Edit,
+  Info,
+  MoreHorizontalIcon,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+import { Card, CardContent } from "@/components/ui/card";
+
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+
+import {
+  checkData,
+  delData,
+  getData,
+  loadTodo,
+  postData,
+  putData,
+  todo,
+  infoIdx,
+  type IObjTodo,
+  ObjInfo,
+  getById,
+  delById,
+  postImgdata,
+} from "./Store/atoms";
+import { Spinner } from "./components/ui/spinner";
+import { useFormik } from "formik";
+
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+export const Api = "http://37.27.29.18:8001";
 
 const App = () => {
-    const dispatch = useDispatch<any>();
-    const data = useSelector((state: any) => state.todo.data);
+  const [users] = useAtom(todo);
+  const loader = useAtomValue(loadTodo);
 
-    const [isOpen, setIsOpen] = useState(false);
-    const [currentTodo, setCurrentTodo] = useState<any>(null);
-    const [text, setText] = useState("");
+  const getUser = useSetAtom(getData);
+  const delUser = useSetAtom(delData);
+  const checkUser = useSetAtom(checkData);
+  const postUser = useSetAtom(postData);
+  const putUser = useSetAtom(putData);
 
-    useEffect(() => { dispatch(getTodos()); }, [dispatch]);
+  useEffect(() => {
+    getUser();
+  }, [getData]);
 
-    const handleSave = () => {
-        if (!text.trim()) return;
-        if (currentTodo) {
-            dispatch(updateTodo({ ...currentTodo, Name: text })); 
-        } else {
-            dispatch(addTodo(text));
-        }
-        setIsOpen(false);
-        setText("");
-    };
+  function hanClDel(id: number) {
+    delUser(id);
+  }
 
-    return (
-        <div className="min-h-screen bg-[#F0F2F5] p-4 sm:p-10 flex justify-center items-start font-sans antialiased text-slate-900">
-            <div className="w-full max-w-lg">
-                {/* Header */}
-                <div className="bg-white rounded-[32px] p-8 mb-6 shadow-sm border border-slate-200/60 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight flex items-center gap-2 text-indigo-600">
-                            <LayoutGrid size={28} /> HUB<span className="text-slate-900">LIST</span>
-                        </h1>
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
-                            {data.length} Tasks Remaining
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        {/* ТУГМАИ DELETE ALL */}
-                        {data.length > 0 && (
-                            <button 
-                                onClick={() => { if(window.confirm("Ҳамаро нест кунам?")) dispatch(deleteAllTodos(data)) }}
-                                className="bg-rose-50 text-rose-600 p-3 rounded-2xl hover:bg-rose-100 transition-all shadow-sm"
-                                title="Delete All"
-                            >
-                                <Trash size={22} />
-                            </button>
-                        )}
-                        <button 
-                            onClick={() => { setCurrentTodo(null); setText(""); setIsOpen(true); }}
-                            className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+  function hanClCheck(id: number) {
+    checkUser(id);
+  }
+
+  ////add
+
+  const [openAdd, setOpenAdd] = useState(false);
+
+  const formikAdd = useFormik({
+    initialValues: {
+      Name: "",
+      Description: "",
+      Images: "",
+    },
+
+    validate: (values) => {
+      const errors: any = {};
+      if (!values.Name.trim()) {
+        errors.Name = "Name is required!";
+      } else if (!values.Description.trim()) {
+        errors.Description = "Description is required!";
+      } else if (!values.Images) {
+        errors.Images = "Images is required!";
+      }
+
+      return errors;
+    },
+    onSubmit: (values, { resetForm }) => {
+      const forms = new FormData();
+      forms.append("Name", values.Name);
+      forms.append("Description", values.Description);
+      forms.append("Images", values.Images);
+
+      postUser(forms);
+
+      setOpenAdd(false);
+
+      resetForm();
+    },
+  });
+
+  ////edit
+  const [openEdit, setOpenEdit] = useState(false);
+
+  interface IobjEdit {
+    id?: number | null;
+    name: string;
+    description: string;
+  }
+  const [objEdit, setObjEdit] = useState<IobjEdit>({
+    id: null,
+    name: "",
+    description: "",
+  });
+
+  const formikEdit = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      Name: objEdit?.name,
+      Description: objEdit?.description,
+    },
+
+    validate: (values) => {
+      const errors: any = {};
+      if (!values.Name.trim()) {
+        errors.Name = "Name is required!";
+      } else if (!values.Description.trim()) {
+        errors.Description = "Description is required!";
+      }
+
+      return errors;
+    },
+    onSubmit: (values, { resetForm }) => {
+      putUser({ ...values, id: objEdit?.id });
+
+      hanCloseEdit();
+
+      resetForm();
+    },
+  });
+
+  function hanClOpenAdd() {
+    setOpenAdd(true);
+  }
+
+  function hanClOpenEdit(elem: IObjTodo) {
+    setObjEdit({
+      id: elem.id,
+      name: elem.name,
+      description: elem.description,
+    });
+    setOpenEdit(true);
+  }
+  function hanCloseEdit() {
+    setObjEdit({
+      id: null,
+      name: "",
+      description: "",
+    });
+    setOpenEdit(false);
+  }
+
+  /////info
+  const [openInfo, setOpenInfo] = useState(false);
+
+  const [userId, setUserId] = useAtom(infoIdx);
+  const [userObjInfo, setUserObjInfo] = useAtom(ObjInfo);
+
+  const userById = useSetAtom(getById);
+
+  const delImg = useSetAtom(delById);
+  const userPostImg = useSetAtom(postImgdata);
+
+  function hanClOpenInfo(id: number) {
+    setOpenInfo(true);
+
+    setUserId(id);
+    userById();
+  }
+
+  useEffect(() => {
+    if (userId !== null) {
+      userById();
+    }
+  }, [userId]);
+
+  function hanBtnDelId(imgId: number) {
+    delImg(imgId);
+  }
+
+  function hanSubAddImg(e: any) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("Images", e.target["Images"].files[0]);
+
+    userPostImg(formData);
+    e.target["Images"].value = "";
+  }
+
+  return (
+    <div>
+      <div className="header p-[10px_20px] ">
+        <Button onClick={hanClOpenAdd}>Add</Button>
+      </div>
+      <div className="px-[20px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Image</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users?.map((e) => {
+              return (
+                <TableRow key={e.id}>
+                  <TableCell className="max-w-[120px] truncate font-medium">
+                    {e.name}
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate">
+                    {e.description}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`text-[#fff] font-medium rounded-[8px] p-[5px_8px] ${e.isCompleted ? "bg-[blue]" : "bg-[red]"}`}
+                    >
+                      {e.isCompleted ? "ACTIVE" : "INACTIVE"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <img
+                      className="w-[150px]"
+                      src={`${Api}/images/${e?.images?.[0]?.imageName}`}
+                      alt=""
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <MoreHorizontalIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => hanClCheck(e.id)}>
+                          <CheckCheckIcon className="stroke-[green]" />
+                          Checked
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => hanClOpenInfo(e.id)}>
+                          <Info className="stroke-[brown]" />
+                          Info
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => hanClOpenEdit(e)}>
+                          <Edit className="stroke-[blue]" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => hanClDel(e.id)}
+                          variant="destructive"
                         >
-                            <Plus size={24} strokeWidth={3} />
-                        </button>
-                    </div>
-                </div>
+                          <Delete className="stroke-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
-                {/* List */}
-                <div className="space-y-4">
-                    {data.map((todo: any) => (
-                        <div key={todo.id} className="bg-white group rounded-[28px] p-5 flex items-center justify-between border border-transparent hover:border-indigo-100 transition-all duration-300">
-                            <div className="flex items-center gap-4 flex-1">
-                                <button onClick={() => dispatch(updateTodo({ ...todo, isCompleted: !todo.isCompleted }))}>
-                                    {todo.isCompleted ? (
-                                        <CheckCircle2 className="text-emerald-500" size={28} strokeWidth={2.5} />
-                                    ) : (
-                                        <Circle className="text-slate-200" size={28} strokeWidth={2.5} />
-                                    )}
-                                </button>
-                                <span className={`text-lg font-bold tracking-tight ${(todo.isCompleted) ? 'text-slate-300 line-through' : 'text-slate-700'}`}>
-                                    {todo.name || todo.Name}
-                                </span>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => { setCurrentTodo(todo); setText(todo.name || todo.Name); setIsOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-600">
-                                    <Pencil size={18} strokeWidth={2.5} />
-                                </button>
-                                <button onClick={() => dispatch(deleteTodo(todo.id))} className="p-2 text-slate-300 hover:text-rose-600">
-                                    <Trash2 size={18} strokeWidth={2.5} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+      {/* add modal */}
+      <Dialog open={openAdd} onOpenChange={(e) => setOpenAdd(e)}>
+        <DialogContent className="sm:max-w-sm">
+          <form onSubmit={formikAdd.handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Add</DialogTitle>
+              <DialogDescription>
+                Make changes to your profile here. Click save when you&apos;re
+                done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 py-2">
+              <div>
+                {formikAdd.errors.Name && formikAdd.touched && (
+                  <p className="pl-1 text-red-500">{formikAdd.errors.Name}</p>
+                )}
+                <input
+                  className="w-full border p-[5px_10px] rounded-[8px]"
+                  value={formikAdd.values.Name}
+                  onChange={formikAdd.handleChange}
+                  onBlur={formikAdd.handleBlur}
+                  type="text"
+                  name="Name"
+                  placeholder="Name"
+                />
+              </div>
+              <div>
+                {" "}
+                {formikAdd.errors.Description && formikAdd.touched && (
+                  <p className="text-red-500">{formikAdd.errors.Description}</p>
+                )}
+                <input
+                  className="w-full border p-[5px_10px] rounded-[8px]"
+                  value={formikAdd.values.Description}
+                  onChange={formikAdd.handleChange}
+                  onBlur={formikAdd.handleBlur}
+                  type="text"
+                  name="Description"
+                  placeholder="Description"
+                />
+              </div>
+              <div>
+                {" "}
+                {formikAdd.errors.Images && formikAdd.touched && (
+                  <p className="text-red-500">{formikAdd.errors.Images}</p>
+                )}
+                <input
+                  className="w-full border p-[5px_10px] rounded-[8px]"
+                  onChange={(e) => {
+                    const file = e.currentTarget.files?.[0];
+
+                    formikAdd.setFieldValue("Images", file);
+                  }}
+                  onBlur={formikAdd.handleBlur}
+                  type="file"
+                  name="Images"
+                />
+              </div>
             </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit">Add</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            {/* Modal */}
-            {isOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-                    <div className="bg-white w-full max-w-md rounded-[40px] p-10 shadow-2xl animate-in zoom-in-95">
-                        <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter text-slate-900">
-                            {currentTodo ? "Edit Mission" : "New Mission"}
-                        </h2>
-                        <input 
-                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 mb-10 outline-none focus:border-indigo-600 font-bold text-xl"
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                            placeholder="Enter task..."
-                            autoFocus
-                        />
-                        <button 
-                            onClick={handleSave} 
-                            className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:bg-indigo-700 transition-all"
-                        >
-                            CONFIRM DATA
-                        </button>
-                    </div>
-                </div>
-            )}
+      {/* edit modal */}
+      <Dialog open={openEdit} onOpenChange={(e) => setOpenEdit(e)}>
+        <DialogContent className="sm:max-w-sm">
+          <form onSubmit={formikEdit.handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Edit</DialogTitle>
+              <DialogDescription>
+                Make changes to your profile here. Click save when you&apos;re
+                done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 py-2">
+              <div>
+                {formikEdit.errors.Name && formikEdit.touched && (
+                  <p className="pl-1 text-red-500">{formikEdit.errors.Name}</p>
+                )}
+                <input
+                  className="w-full border p-[5px_10px] rounded-[8px]"
+                  value={formikEdit.values.Name}
+                  onChange={formikEdit.handleChange}
+                  onBlur={formikEdit.handleBlur}
+                  type="text"
+                  name="Name"
+                  placeholder="Name"
+                />
+              </div>
+              <div>
+                {formikEdit.errors.Description && formikEdit.touched && (
+                  <p className="text-red-500">
+                    {formikEdit.errors.Description}
+                  </p>
+                )}
+                <input
+                  className="w-full border p-[5px_10px] rounded-[8px]"
+                  value={formikEdit.values.Description}
+                  onChange={formikEdit.handleChange}
+                  onBlur={formikEdit.handleBlur}
+                  type="text"
+                  name="Description"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit">Edit</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* info modal */}
+      <Dialog open={openInfo} onOpenChange={(e) => setOpenInfo(e)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Info</DialogTitle>
+            <DialogDescription>
+              Make changes to your profile here. Click save when you&apos;re
+              done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center ">
+            {userObjInfo ? (
+              <div className="carousel pt-[20px] pb-[40px]">
+                <Carousel className="w-[500px] max-w-[100px] sm:max-w-xs">
+                  <CarouselContent className="px-[40px]">
+                    {userObjInfo?.images?.map((e) => {
+                      return (
+                        <CarouselItem key={e.id}>
+                          <div className="p-1">
+                            <Card>
+                              <CardContent className="flex aspect-square items-center  p-6">
+                                <img
+                                  className="w-[400px]"
+                                  src={`${Api}/images/${e.imageName}`}
+                                  alt=""
+                                />
+                              </CardContent>
+                              <div className="flex justify-center p-[10px_20px]">
+                                <Button
+                                  onClick={() => hanBtnDelId(e.id)}
+                                  variant={"destructive"}
+                                >
+                                  <Delete />
+                                </Button>
+                              </div>
+                            </Card>
+                          </div>
+                        </CarouselItem>
+                      );
+                    })}
+                  </CarouselContent>
+                  <CarouselPrevious />
+                  <CarouselNext />
+                </Carousel>
+              </div>
+            ) : null}
+
+            <form onSubmit={hanSubAddImg} className="flex gap-3 items-center ">
+              <input
+                name="Images"
+                type="file"
+                className="border p-[5px_10px]"
+                required
+              />
+              <Button type="submit">Add</Button>
+            </form>
+
+            <Table className="my-4">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium max-w-[100px] truncate">
+                    {userObjInfo?.name}
+                  </TableCell>
+                  <TableCell className="max-w-[100px] truncate">
+                    {userObjInfo?.description}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`${userObjInfo?.isCompleted ? "bg-blue-500" : "bg-red-500"} text-[#fff] p-[5px_8px] rounded-[8px] font-[600]`}
+                    >
+                      {userObjInfo?.isCompleted ? "ACTIVE" : "INACTIVE"}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="destructive">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {loader ? (
+        <div className="flex justify-center py-4">
+          <div className="flex items-center gap-4">
+            <Spinner />
+          </div>
         </div>
-    );
+      ) : null}
+    </div>
+  );
 };
 
 export default App;
